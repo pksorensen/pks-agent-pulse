@@ -152,8 +152,13 @@ jobs:
           done < <(find .agentics/tool -name '*.md' -print0)
           jq -n --arg component pulse --arg version "$VERSION" --argjson files "$FILES" \
             '{component:$component, version:$version, files:$files}' > docs-payload.json
-          curl -fsS -X POST -H "Authorization: Bearer ${OIDC}" -H "Content-Type: application/json" \
-            --data-binary @docs-payload.json https://agentics.dk/api/tools/docs >/dev/null
+          status=$(curl -sS -o docs-response.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${OIDC}" -H "Content-Type: application/json" \
+            --data-binary @docs-payload.json https://agentics.dk/api/tools/docs)
+          if [[ "$status" != 2* && "$status" != 409 ]]; then
+            cat docs-response.json >&2
+            exit 1
+          fi
 
   deploy-production:
     needs: [release-please, build-push]
