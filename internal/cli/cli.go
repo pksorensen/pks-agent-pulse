@@ -79,8 +79,19 @@ func serve(args []string) int {
 	if issuer != "" && aud != "" && jwks != "" {
 		verifier = auth.NewVerifier(issuer, aud, jwks)
 	}
-	s := server.New(server.Config{Addr: *addr, AdminToken: os.Getenv("PULSE_ADMIN_TOKEN"), Store: st, Verifier: verifier})
-	fmt.Fprintf(os.Stderr, "pulse listening on %s (data=%s federation=%t)\n", *addr, *data, verifier != nil)
+	var serviceVerifier *auth.ServiceVerifier
+	serviceIssuer := os.Getenv("PULSE_OIDC_ISSUER")
+	serviceAudience := env("PULSE_OIDC_AUDIENCE", "pulse-api")
+	if serviceIssuer != "" {
+		serviceVerifier = auth.NewServiceVerifier(
+			serviceIssuer,
+			serviceAudience,
+			env("PULSE_OIDC_ROLE_CLIENT", serviceAudience),
+			os.Getenv("PULSE_OIDC_JWKS_URL"),
+		)
+	}
+	s := server.New(server.Config{Addr: *addr, AdminToken: os.Getenv("PULSE_ADMIN_TOKEN"), Store: st, Verifier: verifier, ServiceVerifier: serviceVerifier})
+	fmt.Fprintf(os.Stderr, "pulse listening on %s (data=%s federation=%t service_auth=%t)\n", *addr, *data, verifier != nil, serviceVerifier != nil)
 	return fail(s.ListenAndServe())
 }
 

@@ -160,6 +160,28 @@ func (s *Store) ListMeasurements(owner string) ([]model.Measurement, error) {
 	return out, nil
 }
 
+// ListOwners discovers persisted owners. Pulse management is file-backed, so
+// the scheduler must not depend on a separate environment allow-list after a
+// portal creates a new owner's first measurement.
+func (s *Store) ListOwners() ([]string, error) {
+	root := filepath.Join(s.root, "owners")
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	owners := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() && safeSegment.MatchString(entry.Name()) {
+			owners = append(owners, entry.Name())
+		}
+	}
+	sort.Strings(owners)
+	return owners, nil
+}
+
 func (s *Store) AppendObservation(owner, id string, o model.Observation) error {
 	dir, err := s.measurementDir(owner, id)
 	if err != nil {

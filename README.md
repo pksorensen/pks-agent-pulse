@@ -20,10 +20,14 @@ Configure the service with:
 | Variable | Purpose |
 | --- | --- |
 | `PULSE_ADMIN_TOKEN` | Admin API bearer token. Required for configuration, manual runs and batch ingestion. |
-| `PULSE_OWNERS` | Comma-separated owners whose enabled measurements the scheduler starts. |
+| `PULSE_OWNERS` | Optional comma-separated bootstrap owners. Persisted owners are discovered automatically, including owners created through the API. |
 | `PULSE_WORKLOAD_ISSUER` | Agentics issuer, normally `https://agentics.dk`. |
 | `PULSE_WORKLOAD_JWKS_URL` | Agentics workload JWKS endpoint. |
 | `PULSE_AUDIENCE` | Exact public Pulse URL expected in workload tokens. |
+| `PULSE_OIDC_ISSUER` | Keycloak realm issuer for durable service clients. |
+| `PULSE_OIDC_AUDIENCE` | Required service-token audience, default `pulse-api`. |
+| `PULSE_OIDC_ROLE_CLIENT` | `resource_access` client holding Pulse roles, default same as audience. |
+| `PULSE_OIDC_JWKS_URL` | Optional Keycloak JWKS override; normally derived from the issuer. |
 | `USER_DATA_DIR` | Folder-backed state, default `/data`. |
 
 Then configure a measurement and its assembly-line trust:
@@ -45,6 +49,19 @@ pulse report --owner museliving --measurement website --days 7
 
 The `claude-plugin/skills/pulse-report` skill teaches a reporting station to treat coverage warnings as correctness gates.
 
+## Portal and service access
+
+Pulse also accepts Keycloak client-credentials access tokens. It validates the
+RS256 signature, issuer, `pulse-api` audience and client roles. Routes require
+the narrow role matching the operation (`measurements:read`, `reports:read`,
+`measurements:write`, `measurements:run`, `trust:write` or `batches:write`), while
+the composite `all` role grants the complete API. Arvo uses a confidential
+`arvo-pulse` service client with `pulse-api/all`.
+
+This path does not replace workload federation: assembly-line jobs still use
+short-lived Agentics tokens plus per-owner trust bindings. `PULSE_ADMIN_TOKEN`
+remains available for bootstrap and recovery, not as the normal portal identity.
+
 ## Storage
 
 State is ordinary files under `USER_DATA_DIR`: measurement and trust JSON, daily append-only observation JSONL and source batch JSON. Mount the directory as persistent storage and back it up like any other folder.
@@ -52,4 +69,3 @@ State is ordinary files under `USER_DATA_DIR`: measurement and trust JSON, daily
 ## Scope boundaries
 
 Pulse is active, periodic measurement infrastructure. It is not logs, traces, application instrumentation or infrastructure APM. `pks-agent-ops` owns those signals; `pks-agent-domain` owns DNS, mail and TLS posture.
-

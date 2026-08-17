@@ -25,6 +25,10 @@ func TestMeasurementValidationAndObservationWindow(t *testing.T) {
 	if err != nil || stored.IntervalSeconds != 900 {
 		t.Fatalf("default interval was not persisted: %#v %v", stored, err)
 	}
+	owners, err := s.ListOwners()
+	if err != nil || len(owners) != 1 || owners[0] != "museliving" {
+		t.Fatalf("persisted owner was not discovered: %#v %v", owners, err)
+	}
 
 	base := time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)
 	for i := -1; i <= 1; i++ {
