@@ -4,10 +4,9 @@
     "issuer": "https://agentics.dk",
     "projectOwner": "pksorensen",
     "project": "museliving",
-    "assemblyLineIds": ["REPLACE_WITH_PRODUCTION_ASSEMBLY_LINE_ID"],
-    "stationIds": ["REPLACE_WITH_REPORT_STATION_ID"],
+    "assemblyLineIds": ["3c4b26d5-abcc-4e9c-87aa-4990906614f0"],
+    "stationIds": ["todo"],
     "measurementIds": ["website"],
     "scopes": ["pulse:reports:read"]
   }
 ]
-
