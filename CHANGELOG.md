@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.0...pulse-v0.1.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **release:** use federated registry login ([2a0dcf5](https://github.com/pksorensen/pks-agent-pulse/commit/2a0dcf58955723ecca11dbaae2e0bbe34a626e21))
+
 ## [0.1.0](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.0...pulse-v0.1.0) (2026-08-17)
 
 
