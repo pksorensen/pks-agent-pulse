@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release an exact version (for the first release or recovery)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -15,12 +20,29 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      version: ${{ steps.release.outputs.version }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.manual.outputs.release_created || steps.release.outputs.release_created }}
+      version: ${{ steps.manual.outputs.version || steps.release.outputs.version }}
+      tag_name: ${{ steps.manual.outputs.tag_name || steps.release.outputs.tag_name }}
     steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+      - name: Create requested release
+        id: manual
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --target main --title "$TAG" --generate-notes
+          echo "release_created=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
       - uses: googleapis/release-please-action@v4
         id: release
+        if: github.event_name != 'workflow_dispatch' || inputs.version == ''
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
@@ -132,4 +154,3 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ needs.release-please.outputs.version }}
           tag-name: ${{ needs.release-please.outputs.tag_name }}
-
