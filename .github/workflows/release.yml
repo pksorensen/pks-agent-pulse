@@ -51,31 +51,44 @@ jobs:
   build-push:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
-    # Reuse the maintained Agentics devcontainer: the generic bootstrap image
-    # intentionally has no Docker CLI/socket, while this job builds OCI images.
-    runs-on: [self-hosted, devcontainer-runner, agentics-live-www-devcontainer]
+    runs-on: [self-hosted, devcontainer-runner]
     env:
       VERSION: ${{ needs.release-please.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: pksorensen/pks-cli/.github/actions/registry-login@main
+      - uses: actions/setup-go@v5
         with:
-          registry: registry.agentics.dk
-      - uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: VERSION=${{ env.VERSION }}
-          tags: |
-            registry.agentics.dk/agentics/pks-agent-pulse:${{ env.VERSION }}
-            registry.agentics.dk/agentics/pks-agent-pulse:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - if: always()
-        run: docker logout registry.agentics.dk
+          go-version: "1.24"
+          cache-dependency-path: go.mod
+      - uses: ko-build/setup-ko@v0.9
+      - name: Configure registry credentials
+        run: |
+          set -euo pipefail
+          registry=registry.agentics.dk
+          socket=${PKS_TOKEN_URL:-/var/run/pks-creds/creds.sock}
+          response=$(curl -fsS --unix-socket "$socket" \
+            -H "Authorization: Bearer ${PKS_TOKEN}" \
+            "http://localhost/registry/credential?hostname=${registry}")
+          username=$(jq -r .username <<<"$response")
+          password=$(jq -r .password <<<"$response")
+          test -n "$username" && test "$username" != null
+          test -n "$password" && test "$password" != null
+          echo "::add-mask::$username"
+          echo "::add-mask::$password"
+          auth=$(printf '%s:%s' "$username" "$password" | base64 | tr -d '\n')
+          mkdir -p "$HOME/.docker"
+          jq -n --arg auth "$auth" \
+            '{auths:{"registry.agentics.dk":{auth:$auth}}}' > "$HOME/.docker/config.json"
+      - name: Build and publish multi-platform image
+        env:
+          KO_DOCKER_REPO: registry.agentics.dk/agentics/pks-agent-pulse
+        run: |
+          set -euo pipefail
+          ko build --bare --platform=linux/amd64,linux/arm64 \
+            --tags "$VERSION",latest --sbom=spdx ./cmd/server
+      - name: Remove registry credentials
+        if: always()
+        run: rm -f "$HOME/.docker/config.json"
 
   publish-cli-skill-docs:
     needs: release-please

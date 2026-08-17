@@ -1,0 +1,12 @@
+defaultBaseImage: gcr.io/distroless/static-debian12:latest
+
+builds:
+  - id: pulse-server
+    main: ./cmd/server
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
