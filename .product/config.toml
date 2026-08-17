@@ -1,0 +1,18 @@
+name = "pks-agent-pulse"
+schema-version = "1"
+
+[product]
+responsibility = "Runs scheduled active measurements for owner-scoped targets and turns observations into trustworthy reports; it is not a logs, traces, or infrastructure APM platform."
+
+[domains]
+"measurement" = "Targets, probes, observations, schedules"
+"reporting" = "Daily summaries, baselines, incidents, report exports"
+"federation" = "Assembly-line workload identity and trust bindings"
+
+[author]
+# default agent CLI for `product session start`: claude | copilot
+# cli = "claude"
+
+[mcp]
+write = false
+port = 7777

@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+  id-token: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-push:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: [self-hosted, devcontainer-runner]
+    env:
+      VERSION: ${{ needs.release-please.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: pksorensen/pks-cli/.github/actions/registry-login@main
+        with:
+          registry: registry.agentics.dk
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ env.VERSION }}
+          tags: |
+            registry.agentics.dk/agentics/pks-agent-pulse:${{ env.VERSION }}
+            registry.agentics.dk/agentics/pks-agent-pulse:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - if: always()
+        run: docker logout registry.agentics.dk
+
+  publish-cli-skill-docs:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.release-please.outputs.version }}
+      TAG: ${{ needs.release-please.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: go.mod
+      - name: Build all platforms and skill package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os=${t%/*}; arch=${t#*/}
+            name="pulse_${os}_${arch}"
+            [ "$os" = windows ] && name="${name}.exe"
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${name}" .
+          done
+          ( cd claude-plugin && zip -qr "../dist/pulse-report-skill_${VERSION}.zip" . )
+          ( cd dist && sha256sum pulse_* > "pulse_${VERSION}_checksums.txt" )
+      - name: Attach release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" dist/* --repo "${{ github.repository }}" --clobber
+      - name: Mint release and docs identities
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://agentics.dk/releases" | jq -r .value > release.oidc
+          curl -fsS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://agentics.dk/docs" | jq -r .value > docs.oidc
+      - name: Publish CLI to agentics.dk
+        run: |
+          set -euo pipefail
+          OIDC=$(cat release.oidc)
+          REC="pulse-${VERSION}"
+          curl -fsS -X POST -H "Authorization: Bearer ${OIDC}" -H "Content-Type: application/json" \
+            -d "{\"component\":\"pulse\",\"semver\":\"${VERSION}\",\"tagName\":\"${TAG}\"}" \
+            https://agentics.dk/api/releases >/dev/null
+          for f in dist/*; do
+            curl -fsS -X PUT -H "Authorization: Bearer ${OIDC}" --data-binary @"$f" \
+              "https://agentics.dk/api/releases/${REC}/attachments/$(basename "$f")" >/dev/null
+          done
+          curl -fsS -X PUT -H "Authorization: Bearer ${OIDC}" \
+            "https://agentics.dk/api/releases/${REC}/publish" >/dev/null
+      - name: Publish tool docs to agentics.dk
+        run: |
+          set -euo pipefail
+          OIDC=$(cat docs.oidc)
+          FILES='[]'
+          while IFS= read -r -d '' f; do
+            rel=${f#".agentics/tool/"}
+            FILES=$(jq --arg p "$rel" --rawfile c "$f" '. + [{path:$p, content:$c}]' <<<"$FILES")
+          done < <(find .agentics/tool -name '*.md' -print0)
+          jq -n --arg component pulse --arg version "$VERSION" --argjson files "$FILES" \
+            '{component:$component, version:$version, files:$files}' > docs-payload.json
+          curl -fsS -X POST -H "Authorization: Bearer ${OIDC}" -H "Content-Type: application/json" \
+            --data-binary @docs-payload.json https://agentics.dk/api/tools/docs >/dev/null
+
+  deploy-production:
+    needs: [release-please, build-push]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: [self-hosted, devcontainer-runner]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pksorensen/pks-cli/.github/actions/coolify-deploy@main
+        with:
+          app-name: agent-pulse
+          environment: production
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ needs.release-please.outputs.version }}
+          tag-name: ${{ needs.release-please.outputs.tag_name }}
+

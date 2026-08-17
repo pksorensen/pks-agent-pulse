@@ -1,0 +1,13 @@
+[
+  {
+    "id": "museliving-seo-weekly-report",
+    "issuer": "https://agentics.dk",
+    "projectOwner": "pksorensen",
+    "project": "museliving",
+    "assemblyLineIds": ["REPLACE_WITH_PRODUCTION_ASSEMBLY_LINE_ID"],
+    "stationIds": ["REPLACE_WITH_REPORT_STATION_ID"],
+    "measurementIds": ["website"],
+    "scopes": ["pulse:reports:read"]
+  }
+]
+

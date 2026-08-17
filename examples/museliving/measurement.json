@@ -1,0 +1,14 @@
+{
+  "name": "Museliving website",
+  "enabled": true,
+  "intervalSeconds": 900,
+  "targets": [
+    { "id": "home", "kind": "home", "url": "https://museliving.dk/" },
+    { "id": "wine-racks", "kind": "category", "url": "https://museliving.dk/category/vinreoler/" },
+    { "id": "furniture", "kind": "category", "url": "https://museliving.dk/category/moebler/" },
+    { "id": "bedside-tables", "kind": "deep-category", "url": "https://museliving.dk/category/moebler/sovevaerelse/sengeborde/" },
+    { "id": "product", "kind": "product", "url": "https://museliving.dk/vare/vinreol-mia-egetrae/" },
+    { "id": "blog", "kind": "editorial", "url": "https://museliving.dk/blog/" }
+  ]
+}
+

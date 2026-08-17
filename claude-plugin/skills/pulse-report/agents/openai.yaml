@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pulse reports"
+  short_description: "Read trusted Pulse measurement reports"
+  default_prompt: "Use $pulse-report to fetch and interpret the current measurement report for this assembly-line task."

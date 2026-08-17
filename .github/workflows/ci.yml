@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: go.mod
+      - run: go test ./...
+      - run: go vet ./...
+      - name: Build container
+        run: docker build --build-arg VERSION=ci -t pks-agent-pulse:ci .
+
