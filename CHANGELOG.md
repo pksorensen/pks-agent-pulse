@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.0...pulse-v0.1.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **release:** use federated registry login ([2a0dcf5](https://github.com/pksorensen/pks-agent-pulse/commit/2a0dcf58955723ecca11dbaae2e0bbe34a626e21))
+* **report:** keep empty report lists as arrays ([65143ec](https://github.com/pksorensen/pks-agent-pulse/commit/65143ec5603e047d012ef6e6914244affd5ef8a2))
+
 ## [0.1.0](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.0...pulse-v0.1.0) (2026-08-17)
 
 
