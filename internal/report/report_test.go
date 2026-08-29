@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -35,5 +36,21 @@ func TestBuildFlagsCoverageArtefactsAndAggregatesWebHealth(t *testing.T) {
 	}
 	if len(r.DataQuality) != 1 || !strings.Contains(r.DataQuality[0], "measurement artefacts") {
 		t.Fatalf("expected explicit artefact warning, got %#v", r.DataQuality)
+	}
+}
+
+// A healthy measurement has no affected URLs. Go marshals a nil slice as
+// `null`, and the arvo portal reads `.length` on every list in the report, so
+// the encoded shape — not just the Go value — has to stay a list.
+func TestBuildEncodesEmptyListsAsArrays(t *testing.T) {
+	r := Build("museliving", "website", time.Now().Add(-time.Hour), time.Now(), nil, nil)
+	encoded, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshal report: %v", err)
+	}
+	for _, field := range []string{`"affectedUrls":null`, `"slowest":null`, `"dataQuality":null`} {
+		if strings.Contains(string(encoded), field) {
+			t.Fatalf("report encoded %s; lists must stay arrays: %s", field, encoded)
+		}
 	}
 }

@@ -11,11 +11,11 @@ import (
 )
 
 func Build(owner, measurementID string, from, to time.Time, observations []model.Observation, batch *model.Batch) model.Report {
-	r := model.Report{Owner: owner, MeasurementID: measurementID, From: from.UTC().Format(time.RFC3339), To: to.UTC().Format(time.RFC3339), GeneratedAt: time.Now().UTC().Format(time.RFC3339), Samples: len(observations), StatusCounts: map[string]int{}, DataQuality: []string{}}
+	r := model.Report{Owner: owner, MeasurementID: measurementID, From: from.UTC().Format(time.RFC3339), To: to.UTC().Format(time.RFC3339), GeneratedAt: time.Now().UTC().Format(time.RFC3339), Samples: len(observations), StatusCounts: map[string]int{}, AffectedURLs: []string{}, Slowest: []model.SlowTarget{}, DataQuality: []string{}}
 	var successful int
 	var ttfb []int64
 	affected := map[string]bool{}
-	var slow []model.SlowTarget
+	slow := []model.SlowTarget{}
 	for _, o := range observations {
 		key := "error"
 		if o.Status > 0 {
