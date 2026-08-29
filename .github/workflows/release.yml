@@ -66,7 +66,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bin"
           GOBIN="$RUNNER_TEMP/bin" go install github.com/google/ko@v0.18.0
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-      - name: Log in to registry.agentics.dk with GitHub OIDC
+      # ko talks to the registry itself, so the credential only has to reach the
+      # docker config. `docker login` would additionally require a CLI and a
+      # daemon, and the generic bootstrap runner has neither — which is exactly
+      # how this job landed on `docker: command not found` for 0.1.1.
+      - name: Configure registry.agentics.dk credentials from GitHub OIDC
         run: |
           set -euo pipefail
           oidc=$(curl -fsS \
@@ -74,8 +78,11 @@ jobs:
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=registry.agentics.dk" | jq -r .value)
           test -n "$oidc" && test "$oidc" != null
           echo "::add-mask::$oidc"
-          printf '%s' "$oidc" | docker login registry.agentics.dk \
-            --username oauth2 --password-stdin
+          auth=$(printf 'oauth2:%s' "$oidc" | base64 | tr -d '\n')
+          echo "::add-mask::$auth"
+          mkdir -p "$HOME/.docker"
+          jq -n --arg auth "$auth" \
+            '{auths:{"registry.agentics.dk":{auth:$auth}}}' > "$HOME/.docker/config.json"
       - name: Build and publish multi-platform image
         env:
           KO_DOCKER_REPO: registry.agentics.dk/agentics/pks-agent-pulse
