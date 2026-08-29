@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.1...pulse-v0.1.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **release:** deploy production from the repo, not the registry ([eca3bfd](https://github.com/pksorensen/pks-agent-pulse/commit/eca3bfd122f5e83ea2ee257f86bece01be3e20ae))
+* **release:** publish the image without a Docker daemon ([cfcacc4](https://github.com/pksorensen/pks-agent-pulse/commit/cfcacc4b298093f42f0c023e0a7cdd7a3a953d4c))
+
 ## [0.1.1](https://github.com/pksorensen/pks-agent-pulse/compare/pulse-v0.1.0...pulse-v0.1.1) (2026-08-29)
 
 
